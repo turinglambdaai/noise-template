@@ -1,0 +1,16 @@
+#!/usr/bin/env racket
+#lang racket/base
+;;
+#| codegen fallback: emit Backend.swift by invoking noise-serde-codegen directly.
+
+   Used by the Makefile when `raco noise-serde-codegen` is not registered
+   (e.g. noise-serde-lib was installed with --no-setup).
+
+   Usage: ./bin/codegen <path/to/main.rkt>
+|#
+(require racket/cmdline)
+(command-line
+ #:args (modpath)
+ (dynamic-require modpath #f))   ; loads main.rkt, registering records + rpcs
+(require noise/codegen)
+(write-Swift-code)
