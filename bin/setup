@@ -81,10 +81,26 @@ else
 fi
 
 # --- 3. checkout Noise (version branch) + lfs + build xcframeworks ------
+# Track which Racket version the xcframeworks were last built for. The branch
+# name alone isn't a reliable signal (a failed prior run can leave Noise on the
+# new branch with stale libs), so we record the version in a marker file and
+# compare against it. Mismatched boot files vs. RacketCS static libs abort at
+# boot ("petite is for Version X; need Version Y"), so on any version change
+# we clean and rebuild the xcframeworks from scratch.
+VERSION_MARKER="$NOISE_DIR/.built-racket-version"
+NEEDS_REBUILD=1
+if [[ -f "$VERSION_MARKER" ]] && [[ "$(cat "$VERSION_MARKER")" == "$RK_VER" ]]; then
+  NEEDS_REBUILD=0
+fi
+
 if [[ -d "$NOISE_DIR/.git" ]]; then
-  log "updating existing $NOISE_DIR"
+  log "updating existing $NOISE_DIR (built for: $(cat "$VERSION_MARKER" 2>/dev/null || echo 'none'))"
+  # Shallow-fetch doesn't create a local branch ref, so a plain `checkout
+  # $BRANCH` fails when switching versions. Point the local branch at the
+  # fetched commit (FETCH_HEAD) with -B, which works whether the branch
+  # already exists locally or is brand new.
   git -C "$NOISE_DIR" fetch --depth 1 origin "$BRANCH"
-  git -C "$NOISE_DIR" checkout "$BRANCH"
+  git -C "$NOISE_DIR" checkout -B "$BRANCH" FETCH_HEAD
 else
   log "cloning Noise ${BRANCH} -> $NOISE_DIR"
   git clone --depth 1 --branch "$BRANCH" "$NOISE_REPO" "$NOISE_DIR"
@@ -93,9 +109,24 @@ log "pulling LFS binaries (RacketCS static libs)"
 git -C "$NOISE_DIR" lfs install
 git -C "$NOISE_DIR" lfs pull
 
+if [[ "$NEEDS_REBUILD" -eq 1 ]]; then
+  log "Racket ${RK_VER} → clean-rebuilding xcframeworks"
+  make -C "$NOISE_DIR" clean >/dev/null 2>&1 || true
+  # Wipe SPM's incremental cache too: SwiftPM doesn't reliably detect that a
+  # binaryTarget (the RacketCS xcframework) changed, so a cached link step can
+  # bundle the *old* RacketCS static lib — which then mismatches the new boot
+  # files and aborts at startup ("petite is for Version X; need Version Y").
+  rm -rf .build
+fi
+# Build the iOS + macOS xcframeworks that Package.swift declares as binary
+# targets. We deliberately skip the test modules target (mods.zo): its http.rkt
+# needs net/http-easy, a package absent on a fresh Racket install, and the app
+# doesn't use the test bundle. Building both frameworks explicitly (instead of
+# `make all`) sidesteps that dependency.
 log "building RacketCS xcframeworks"
-make -C "$NOISE_DIR"
+make -C "$NOISE_DIR" RacketCS-ios.xcframework RacketCS-macos.xcframework
 ok "Noise ready at $NOISE_DIR"
+echo "$RK_VER" > "$VERSION_MARKER"
 
 # --- 4. install noise-serde-lib (Racket side) ---------------------------
 # Version branches keep it at <Noise>/Racket/noise-serde-lib. We (re)link it
