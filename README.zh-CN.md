@@ -49,6 +49,40 @@ swift build   # 修改 app/*.swift 后
 
 > **顺序很重要：** 当 Racket 代码有改动时，务必在 `swift build` 之前先 `make`，以保证内嵌的 `core.zo` 和生成的 `Backend.swift` 保持同步。
 
+## 打包分发
+
+`swift build` 产出的是裸可执行文件，不是 `.app`。`package` 脚本会组装出真正的
+macOS 应用包（含内嵌的 `core.zo`），再打包成 `.dmg` 用于分发：
+
+```bash
+./bin/package                       # → dist/App.dmg（未签名）
+```
+
+它会重建后端（`make`）、执行 release 构建、组装 `dist/<App>.app`
+（`Contents/MacOS` + `Contents/Resources/res/core.zo` + `Info.plist`），并生成一个
+拖拽安装的 `.dmg`。应用名取自 `Package.swift` 中的 `APP_NAME`；若产品名与 SPM target
+名不同，用 `--name` 覆盖。
+
+**签名与公证**（让 Gatekeeper 不再弹警告）需要你的 Apple 开发者 ID —— 传入后脚本会
+一并完成签名、公证、装订，并对 DMG 签名：
+
+```bash
+./bin/package \
+  --sign "Developer ID Application: Your Name (TEAMID)" \
+  --notarize "apple-id@example.com" \
+  --team-id ABCD123456
+```
+
+| 选项 | 作用 |
+|------|------|
+| `--name X` | 指定 `.app` / `.dmg` 名称（默认取 Package.swift 的 `APP_NAME`） |
+| `--sign "..."` | 用 Developer ID Application 身份签名 |
+| `--notarize "apple-id"` | 提交给 notarytool 公证（需配合 `--sign`） |
+| `--team-id ABCD123456` | 公证用的 Apple team ID（需配合 `--notarize`） |
+| `--skip-dmg` | 只生成 `dist/<App>.app` |
+
+RacketCS 运行时是静态链接的，所以产物在任何 macOS 14+ 机器上都能跑 —— **目标机器无需安装 Racket。**
+
 ## 改成你自己的应用
 
 示例是一个计数器，这样你能看到完整的往返链路。要把它变成你的应用：

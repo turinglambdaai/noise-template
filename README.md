@@ -49,6 +49,44 @@ swift build   # after changing app/*.swift
 
 > **Order matters:** always `make` before `swift build` when Racket code changed, so the bundled `core.zo` and generated `Backend.swift` stay in sync.
 
+## Distribute
+
+`swift build` produces a bare executable, not a `.app`. The `package` script
+assembles a real macOS app bundle (with the embedded `core.zo`) and wraps it in
+a `.dmg` for distribution:
+
+```bash
+./bin/package                       # → dist/App.dmg (unsigned)
+```
+
+It rebuilds the backend (`make`), does a release build, assembles
+`dist/<App>.app` (`Contents/MacOS` + `Contents/Resources/res/core.zo` +
+`Info.plist`), and creates a drag-to-install `.dmg`. The app name comes from
+`APP_NAME` in `Package.swift`; override it with `--name` for a product name
+that differs from the SPM target.
+
+**Signing & notarization** (so Gatekeeper doesn't warn) need your Apple
+Developer ID — pass them and the script signs, notarizes, staples, and signs
+the DMG too:
+
+```bash
+./bin/package \
+  --sign "Developer ID Application: Your Name (TEAMID)" \
+  --notarize "apple-id@example.com" \
+  --team-id ABCD123456
+```
+
+| Option | What it does |
+|--------|--------------|
+| `--name X` | name the `.app` / `.dmg` (default: `APP_NAME` from Package.swift) |
+| `--sign "..."` | codesign with a Developer ID Application identity |
+| `--notarize "apple-id"` | submit to notarytool (requires `--sign`) |
+| `--team-id ABCD123456` | Apple team ID for notarization (requires `--notarize`) |
+| `--skip-dmg` | produce only `dist/<App>.app` |
+
+The RacketCS runtime is statically linked, so the result runs on any macOS 14+
+machine — **no Racket install needed on the target.**
+
 ## Make it your own
 
 The example is a counter so you can see the round-trip work. To turn it into your app:

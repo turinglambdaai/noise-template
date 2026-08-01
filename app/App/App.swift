@@ -22,6 +22,15 @@ struct AppMain: App {
 }
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
+  func applicationWillFinishLaunching(_ notification: Notification) {
+    // SPM executables default to an "accessory" activation policy, so the
+    // window is created but never rendered to screen. Promote to a regular
+    // app *before* the window appears, so it shows up in the Dock and on
+    // screen. Must happen in applicationWillFinishLaunching (before the main
+    // window is created), not in didFinishLaunching.
+    NSApp.setActivationPolicy(.regular)
+  }
+
   func applicationDidFinishLaunching(_ notification: Notification) {
     NSApp.activate(ignoringOtherApps: true)
   }
