@@ -4,7 +4,9 @@ A starter template for building **native macOS apps with a Racket backend**, usi
 
 Write your business logic in Racket, expose it as typed RPCs, and call it from a SwiftUI frontend — Noise bridges the two with a generated client and a binary protocol over pipes. This template wires up the whole toolchain and **auto-adapts to whatever Racket version you have installed**, so you skip the fiddly per-version setup.
 
-![SwiftUI](https://img.shields.io/badge/SwiftUI-2396F3?logo=swift&logoColor=white) ![Racket](https://img.shields.io/badge/Racket-9F1D20?logo=racket&logoColor=white)
+![SwiftUI](https://img.shields.io/badge/SwiftUI-2396F3?logo=swift&logoColor=white) ![Racket](https://img.shields.io/badge/Racket-9F1D20?logo=racket&logoColor=white) [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+
+**English** · [中文](README.zh-CN.md)
 
 ## What you get
 
